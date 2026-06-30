@@ -36,18 +36,45 @@ make conformance                 # official suite @ 2025-11-25, empty baseline -
 
 `make dev` runs the same component under the wasmCloud-native `wash dev` loop.
 
+## Examples
+
+Three runnable example MCP servers (build with `make examples`, or `cd` in and
+`cargo build --release --target wasm32-wasip2`). Full list and details in
+[`EXAMPLES.md`](EXAMPLES.md).
+
+| Example | What it shows | Walkthrough |
+|---|---|---|
+| [`hello-world`](examples/hello-world/) | smallest MCP server — one tool, no network | [walkthrough](examples/hello-world/README.md) |
+| [`petstore`](examples/petstore/) | bridging a REST API; outbound HTTP from tools | [walkthrough](examples/petstore/README.md) |
+| [`fred`](examples/fred/) | Federal Reserve API with auth + query params | [walkthrough](examples/fred/README.md) |
+
+## Documentation
+
+- [Getting started](docs/getting-started.md) — install, run an example, build your own
+- [Authoring tools](docs/authoring-tools.md) — the `#[tool]` model in depth
+- [Generate from OpenAPI](docs/generate-from-openapi.md) — bulk-start from a spec
+- [Architecture](docs/architecture.md) — how the crates fit together
+- [Conformance](docs/conformance.md) — the test suite and the green loop
+- [Deploying](docs/deploying.md) — wasmCloud v2 packaging, config & secrets
+- [`AGENTS.md`](AGENTS.md) — terse rules for an LLM building a server
+- [`DESIGN.md`](DESIGN.md) · [`DECISIONS.md`](DECISIONS.md) — spec & resolved decisions
+
 ## Layout
 
 ```
 crates/
-  mcp-server-v1/   the fixed v1 transport (single WASI 0.2 component)
+  mcp-server-v1/   the conformance reference server (single WASI 0.2 component)
     wit/           world.wit + fetched wasi deps (wkg)
     src/           lib.rs (http), proto.rs (routing), sse.rs, fixtures.rs, kv.rs
-  mcp-core/        first-party runtime glue for LLM-authored tools (milestone 4)
-  mcp-derive/      first-party #[tool] proc-macro (milestone 4)
-generator/         OpenAPI 3.x -> src/tools/*.rs (milestone 4)
+  mcp-derive/      first-party #[tool] proc-macro (schema gen + dispatch)
+  mcp-core/        ToolHandle/ToolError/Json + pluggable http backend
+  mcp-api-core/    pure, host-tested MCP router for tool servers
+  mcp-api-server/  shared WASI glue for tool servers (outbound http + serve! macro)
+generator/         OpenAPI 3.x -> src/tools/*.rs (host binary)
+examples/          hello-world, petstore, fred
 templates/         wash-new templates (v1 ready; v2 deferred)
-.github/workflows/ conformance CI
+docs/              howtos (getting-started, authoring-tools, deploying, …)
+.github/workflows/ conformance + unit + examples CI
 ```
 
 ## Conformance loop
