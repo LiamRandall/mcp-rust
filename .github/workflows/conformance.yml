@@ -1,0 +1,79 @@
+name: conformance
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  # Full official MCP conformance suite against the v1 component.
+  # v2 (MCP 2026-07-28) is deferred — no conformance release knows that spec
+  # version yet (DECISIONS.md D9).
+  conformance:
+    name: v1 / 2025-11-25
+    runs-on: ubuntu-latest
+    env:
+      SPEC_VERSION: "2025-11-25"
+      ADDR: "127.0.0.1:8080"
+      URL: "http://127.0.0.1:8080/mcp"
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust (wasm32-wasip2)
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-wasip2
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: ". -> target"
+
+      - name: Install Wasm-native tooling
+        uses: taiki-e/install-action@v2
+        with:
+          tool: wasm-tools@1.243.0,wasmtime@39.0.1
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Build component
+        run: make build
+
+      - name: Serve (wasmtime) and run conformance
+        run: |
+          set -euo pipefail
+          wasmtime serve -Scli -Shttp -Skeyvalue dist/server.wasm --addr "$ADDR" &
+          SERVER_PID=$!
+          trap 'kill $SERVER_PID 2>/dev/null || true' EXIT
+
+          echo "Waiting for server readiness..."
+          for i in $(seq 1 60); do
+            code=$(curl -s -o /dev/null -w '%{http_code}' -X POST "$URL" \
+              -H 'Content-Type: application/json' \
+              -H 'Accept: application/json, text/event-stream' \
+              -d '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-11-25","capabilities":{},"clientInfo":{"name":"ci","version":"1.0"}}}' \
+              || true)
+            [ "$code" = "200" ] && { echo "ready"; break; }
+            sleep 0.5
+          done
+
+          # Empty baseline (conformance-baseline.yml) -> exit 0 only if all pass.
+          make conformance
+
+      - name: Size report
+        if: always()
+        run: scripts/size-report.sh dist/server.wasm
+
+  # Host-side unit tests (schema generation, dispatch) for the first-party crates.
+  unit:
+    name: unit tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo test -p mcp-core -p mcp-derive
