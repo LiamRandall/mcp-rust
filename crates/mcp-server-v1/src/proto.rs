@@ -15,8 +15,6 @@ pub enum Reply {
     Accepted,
     /// A streamed Server-Sent-Events response.
     Sse(Plan),
-    /// A raw HTTP status (error paths).
-    Status(u16, Option<Value>),
 }
 
 pub fn error_envelope(id: Value, code: i64, message: &str) -> Value {

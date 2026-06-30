@@ -88,10 +88,6 @@ fn handle_post(request: IncomingRequest, response_out: ResponseOutparam) {
         proto::Reply::Json(value, session) => respond_json(response_out, &value, session),
         proto::Reply::Accepted => respond_status(response_out, 202, None),
         proto::Reply::Sse(plan) => sse::stream(response_out, plan),
-        proto::Reply::Status(code, value) => {
-            let bytes = value.map(|v| serde_json::to_vec(&v).unwrap_or_default());
-            respond_status(response_out, code, bytes.as_deref());
-        }
     }
 }
 
