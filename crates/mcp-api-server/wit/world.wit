@@ -1,0 +1,11 @@
+package mcp:api-server@0.1.0;
+
+/// Shared world for API-bridging MCP tool servers (the `#[tool]` authoring
+/// path). Exports the HTTP entrypoint and imports only outbound HTTP — config
+/// is read from the environment via std (wasi:cli), surfaced by the host as
+/// env vars / wasi:config (DESIGN §2.4). No keyvalue/SSE: tool servers answer
+/// over plain application/json.
+world api-server {
+  import wasi:http/outgoing-handler@0.2.6;
+  export wasi:http/incoming-handler@0.2.6;
+}

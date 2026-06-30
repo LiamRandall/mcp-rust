@@ -68,7 +68,7 @@ jobs:
         if: always()
         run: scripts/size-report.sh dist/server.wasm
 
-  # Host-side unit tests (schema generation, dispatch) for the first-party crates.
+  # Host-side unit tests (schema generation, dispatch, routing) for first-party crates.
   unit:
     name: unit tests
     runs-on: ubuntu-latest
@@ -76,4 +76,35 @@ jobs:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
-      - run: cargo test -p mcp-core -p mcp-derive -p generator
+      - run: cargo test -p mcp-core -p mcp-derive -p mcp-api-core -p generator
+
+  # Build the example components and smoke-test hello-world (no network).
+  examples:
+    name: examples
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-wasip2
+      - uses: Swatinem/rust-cache@v2
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: wasm-tools@1.243.0,wasmtime@39.0.1
+      - run: make examples
+      - name: Smoke-test hello-world
+        run: |
+          set -euo pipefail
+          W=examples/hello-world/target/wasm32-wasip2/release/hello_world.wasm
+          wasm-tools validate "$W"
+          wasmtime serve -Scli -Shttp "$W" --addr 127.0.0.1:8090 &
+          PID=$!; trap 'kill $PID 2>/dev/null || true' EXIT
+          for i in $(seq 1 40); do
+            curl -sf -X POST http://127.0.0.1:8090/ -H 'Content-Type: application/json' \
+              -d '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}' >/dev/null && break
+            sleep 0.5
+          done
+          out=$(curl -s -X POST http://127.0.0.1:8090/ -H 'Content-Type: application/json' \
+            -d '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"greet","arguments":{"name":"CI"}}}')
+          echo "$out"
+          echo "$out" | grep -q "Hello, CI" || { echo "greet did not respond as expected"; exit 1; }

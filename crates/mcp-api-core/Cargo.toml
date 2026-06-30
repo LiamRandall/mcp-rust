@@ -1,0 +1,12 @@
+[package]
+name = "mcp-api-core"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Pure, host-testable MCP router for API-bridging tool servers (JSON transport)."
+
+[dependencies]
+mcp-core = { path = "../mcp-core" }
+serde = { workspace = true }
+serde_json = { workspace = true }

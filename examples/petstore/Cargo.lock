@@ -27,14 +27,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d9c4f5dac5e15c24eb999c26181a6ca40b39fe946cbe4c263c7209467bc83af2"
 
 [[package]]
-name = "generator"
-version = "0.1.0"
-dependencies = [
- "serde",
- "serde_json",
-]
-
-[[package]]
 name = "hashbrown"
 version = "0.15.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -101,6 +93,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "mcp-api-server"
+version = "0.1.0"
+dependencies = [
+ "mcp-api-core",
+ "mcp-core",
+ "wit-bindgen",
+]
+
+[[package]]
 name = "mcp-core"
 version = "0.1.0"
 dependencies = [
@@ -119,19 +120,19 @@ dependencies = [
 ]
 
 [[package]]
-name = "mcp-server-v1"
-version = "0.1.0"
-dependencies = [
- "serde",
- "serde_json",
- "wit-bindgen",
-]
-
-[[package]]
 name = "memchr"
 version = "2.8.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "88904434abc2901f197fe8cc55f0445e7ded921dba5911dad2e2b39b48e663c4"
+
+[[package]]
+name = "petstore"
+version = "0.1.0"
+dependencies = [
+ "mcp-api-server",
+ "mcp-core",
+ "serde_json",
+]
 
 [[package]]
 name = "prettyplease"

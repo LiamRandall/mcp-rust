@@ -69,31 +69,74 @@ pub mod __rt {
 
 /// Outbound HTTP + config for tool bodies.
 ///
-/// The wasm implementation (raw `wasi:http/outgoing-handler` + `wasi:config`,
-/// per DESIGN §6 / D5) lands with the two-component authoring path (DECISIONS
-/// D6). The signatures are stable now so `#[tool]` bodies compile against them.
+/// Tools are plain `fn(&Json)`, so they reach the network through a process-wide
+/// [`Backend`] that the host component installs once at startup via
+/// [`set_backend`]. In wasm that backend is raw `wasi:http/outgoing-handler` +
+/// `wasi:cli/environment` (see `mcp-api-server`); in host tests it is a mock.
 pub mod http {
     use crate::{Json, ToolError};
+    use std::cell::RefCell;
 
-    fn unwired(what: &str) -> ToolError {
-        ToolError::msg(format!(
-            "mcp_core::http::{what} is wired only inside the wasm tools component (see DECISIONS D6)"
-        ))
+    /// Network + config provider for tool bodies. Implemented by the component.
+    pub trait Backend {
+        /// Read a config/secret value (env var / `wasi:config`).
+        fn config(&self, key: &str) -> Option<String>;
+        /// Perform an HTTP request. `body` is empty for GET/DELETE.
+        fn fetch(
+            &self,
+            method: &str,
+            url: &str,
+            body: &[u8],
+            headers: &[(String, String)],
+        ) -> Result<Response, String>;
     }
 
-    /// Read a value from `wasi:config` (Kubernetes ConfigMap/Secret).
-    pub fn config(_key: &str) -> Result<String, ToolError> {
-        Err(unwired("config"))
+    thread_local! {
+        static BACKEND: RefCell<Option<Box<dyn Backend>>> = const { RefCell::new(None) };
     }
 
-    /// HTTP GET, returning the response for `.json()` mapping.
-    pub fn get(_url: &str) -> Result<Response, ToolError> {
-        Err(unwired("get"))
+    /// Install the process's HTTP/config backend. Called once by the component.
+    pub fn set_backend(backend: Box<dyn Backend>) {
+        BACKEND.with(|slot| *slot.borrow_mut() = Some(backend));
+    }
+
+    fn with<R>(f: impl FnOnce(&dyn Backend) -> Result<R, ToolError>) -> Result<R, ToolError> {
+        BACKEND.with(|slot| match slot.borrow().as_deref() {
+            Some(b) => f(b),
+            None => Err(ToolError::msg("http backend not configured")),
+        })
+    }
+
+    /// Read a value from config (Kubernetes ConfigMap/Secret, surfaced as an
+    /// env var / `wasi:config`). Errors if unset.
+    pub fn config(key: &str) -> Result<String, ToolError> {
+        with(|b| b.config(key).ok_or_else(|| ToolError::msg(format!("missing config: {key}"))))
+    }
+
+    /// HTTP GET.
+    pub fn get(url: &str) -> Result<Response, ToolError> {
+        with(|b| b.fetch("GET", url, &[], &[]).map_err(ToolError::msg))
+    }
+
+    /// HTTP DELETE.
+    pub fn delete(url: &str) -> Result<Response, ToolError> {
+        with(|b| b.fetch("DELETE", url, &[], &[]).map_err(ToolError::msg))
     }
 
     /// HTTP POST with a JSON body.
-    pub fn post(_url: &str, _body: &Json) -> Result<Response, ToolError> {
-        Err(unwired("post"))
+    pub fn post(url: &str, body: &Json) -> Result<Response, ToolError> {
+        json_send("POST", url, body)
+    }
+
+    /// HTTP PUT with a JSON body.
+    pub fn put(url: &str, body: &Json) -> Result<Response, ToolError> {
+        json_send("PUT", url, body)
+    }
+
+    fn json_send(method: &str, url: &str, body: &Json) -> Result<Response, ToolError> {
+        let bytes = serde_json::to_vec(body)?;
+        let headers = [("content-type".to_string(), "application/json".to_string())];
+        with(|b| b.fetch(method, url, &bytes, &headers).map_err(ToolError::msg))
     }
 
     /// An upstream HTTP response.
@@ -106,6 +149,20 @@ pub mod http {
         /// Parse the response body as JSON → MCP text content.
         pub fn json(&self) -> Result<Json, ToolError> {
             serde_json::from_slice(&self.body).map_err(Into::into)
+        }
+
+        /// The response body as UTF-8 text.
+        pub fn text(&self) -> String {
+            String::from_utf8_lossy(&self.body).into_owned()
+        }
+
+        /// Error unless the status is 2xx.
+        pub fn ok(self) -> Result<Self, ToolError> {
+            if (200..300).contains(&self.status) {
+                Ok(self)
+            } else {
+                Err(ToolError::msg(format!("upstream HTTP {}: {}", self.status, self.text())))
+            }
         }
     }
 }

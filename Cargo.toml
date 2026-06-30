@@ -3,8 +3,15 @@ resolver = "2"
 members = [
     "crates/mcp-core",
     "crates/mcp-derive",
+    "crates/mcp-api-core",
     "crates/mcp-server-v1",
     "generator",
+]
+exclude = [
+    # wasm-only component crates: built with `--target wasm32-wasip2`, not on host.
+    "examples/hello-world",
+    "examples/petstore",
+    "examples/fred",
 ]
 
 [workspace.package]

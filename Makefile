@@ -12,7 +12,9 @@ DIST           := dist/server.wasm
 URL            ?= http://127.0.0.1:8080/mcp
 ADDR           ?= 127.0.0.1:8080
 
-.PHONY: build serve conformance dev doctor size validate test clean
+EXAMPLES := hello-world petstore fred
+
+.PHONY: build serve conformance dev doctor size validate test clean examples
 
 build: $(DIST) validate size
 
@@ -44,7 +46,14 @@ conformance:
 		--expected-failures conformance-baseline.yml
 
 test:
-	cargo test -p mcp-core -p mcp-derive -p generator
+	cargo test -p mcp-core -p mcp-derive -p mcp-api-core -p generator
+
+# Build every example component (each is its own wasm32-wasip2 package).
+examples:
+	@for ex in $(EXAMPLES); do \
+	  echo "==> building example: $$ex"; \
+	  ( cd examples/$$ex && cargo build --release --target wasm32-wasip2 ) || exit 1; \
+	done
 
 doctor:
 	@scripts/doctor.sh
