@@ -44,7 +44,7 @@ conformance:
 		--expected-failures conformance-baseline.yml
 
 test:
-	cargo test -p mcp-core -p mcp-derive
+	cargo test -p mcp-core -p mcp-derive -p generator
 
 doctor:
 	@scripts/doctor.sh

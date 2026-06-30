@@ -95,6 +95,7 @@ checksum = "0ceec5bc11778974d1bcb055b18002eba7f4b3518b6a0081b3af5f21666da9ad"
 name = "mcp-core"
 version = "0.1.0"
 dependencies = [
+ "mcp-derive",
  "serde",
  "serde_json",
 ]
@@ -102,6 +103,11 @@ dependencies = [
 [[package]]
 name = "mcp-derive"
 version = "0.1.0"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
+]
 
 [[package]]
 name = "mcp-server-v1"

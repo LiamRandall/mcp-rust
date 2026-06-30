@@ -1,0 +1,44 @@
+# wasmCloud v2 deployment — runtime-operator CRD, no wadm/OAM (DESIGN §8.3).
+#
+# Apply with `kubectl apply -f deploy/` (or `cosmonic_apply_workload`). The
+# daemon pins `image` to a digest and cosign-verifies it per policy on start.
+#
+# Capabilities the component imports — wasi:http (outbound), wasi:config,
+# wasi:keyvalue, wasi:clocks, wasi:random — are satisfied by built-in host
+# plugins (in-process; zero capability providers, DESIGN §2.4). Only the
+# *incoming* HTTP handler is declared here so the ingress routes to it.
+apiVersion: runtime.wasmcloud.dev/v1alpha1
+kind: Workload
+metadata:
+  name: mcp-server
+  namespace: default
+  annotations:
+    desktop.cosmonic.com/enabled: "true"
+spec:
+  hostInterfaces:
+    - namespace: wasi
+      package: http
+      interfaces: ["incoming-handler"]
+      config:
+        host: mcp-server.localhost
+  components:
+    - name: server
+      # Publish with `wash build` + push, then pin the tag/digest here.
+      image: ghcr.io/liamrandall/mcp-server-v1:0.1.0
+      poolSize: 1
+      localResources:
+        environment:
+          # Non-secret config, surfaced to tools via wasi:config (the DESIGN's
+          # "ConfigMap"). Used by generated OpenAPI tools, not the fixtures.
+          config:
+            API_BASE_URL: "https://api.example.com"
+            LOG_LEVEL: "info"
+          # Upstream API token, registered out-of-band (never inline a value):
+          #   cosmonic_set_secret API_TOKEN <value>
+          # The DESIGN's "Secret", surfaced via wasi:config.
+          secretFrom:
+            - name: API_TOKEN
+        # Outbound allow-list is DENY-ALL when empty (fail-closed). List every
+        # host generated tools dial. The MCP fixtures make no outbound calls.
+        allowedHosts:
+          - "api.example.com"

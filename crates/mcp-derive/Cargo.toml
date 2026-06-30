@@ -9,4 +9,10 @@ description = "First-party #[tool] proc-macro: JSON Schema generation + dispatch
 [lib]
 proc-macro = true
 
+# Build-time only — these compile-time dependencies never ship in the wasm
+# component (DESIGN §2.1 governs *runtime* deps). syn/quote/proc-macro2 are the
+# canonical proc-macro toolkit.
 [dependencies]
+syn = { version = "2", features = ["full"] }
+quote = "1"
+proc-macro2 = "1"

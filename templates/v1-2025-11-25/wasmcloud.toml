@@ -1,0 +1,10 @@
+# wasmCloud v2 component manifest (mirrors the upstream wasmCloud templates).
+# Drives the `wash dev` inner loop and `wash build`. DESIGN §5.3.
+name = "mcp-server"
+language = "rust"
+type = "component"
+version = "0.1.0"
+
+[component]
+wit_world = "reference-server"
+wasm_target = "wasm32-wasip2"
