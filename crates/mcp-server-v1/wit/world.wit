@@ -1,0 +1,19 @@
+package mcp:server@0.1.0;
+
+/// The fixed v1 transport, compiled to a single WASI 0.2 component.
+///
+/// Exports the HTTP entrypoint that wash-runtime / `wasmtime serve` drives, and
+/// imports only built-in WASI host plugins:
+///   - keyvalue: cross-request correlation for server->client requests
+///               (sampling / elicitation) and, where needed, session state.
+///   - monotonic-clock: the small inter-notification delays the conformance
+///               suite expects (logging / progress pacing).
+///   - random: session ids and unique server-initiated request ids.
+///
+/// No `wasmcloud:*`, no wRPC, no capability providers. See DESIGN.md §2.4.
+world reference-server {
+  import wasi:clocks/monotonic-clock@0.2.6;
+  import wasi:random/random@0.2.6;
+  import wasi:keyvalue/store@0.2.0-draft;
+  export wasi:http/incoming-handler@0.2.6;
+}

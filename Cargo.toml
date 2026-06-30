@@ -1,0 +1,27 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/mcp-core",
+    "crates/mcp-derive",
+    "crates/mcp-server-v1",
+    "generator",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+license = "Apache-2.0"
+repository = "https://github.com/LiamRandall/mcp-rust"
+
+[workspace.dependencies]
+wit-bindgen = "0.50"
+serde = { version = "1", default-features = false, features = ["derive", "alloc"] }
+serde_json = { version = "1", default-features = false, features = ["alloc"] }
+
+# Size-first release profile (DESIGN §5.2). Mandatory for every component crate.
+[profile.release]
+opt-level = "z"
+lto = true
+codegen-units = 1
+panic = "abort"
+strip = true

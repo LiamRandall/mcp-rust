@@ -1,0 +1,4 @@
+# Conformance baseline — MUST stay empty for a shipped template (DESIGN §2.3).
+# Any scenario listed here is a known-failure; the suite ships with none.
+server: []
+client: []

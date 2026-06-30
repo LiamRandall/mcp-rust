@@ -1,0 +1,15 @@
+[package]
+name = "mcp-server-v1"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Fixed MCP 2025-11-25 transport, compiled to a single WASI 0.2 component."
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+wit-bindgen.workspace = true
+serde.workspace = true
+serde_json.workspace = true
